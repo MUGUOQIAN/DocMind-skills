@@ -1,0 +1,30 @@
+{
+  "industry": "信息传输、软件和信息技术服务业",
+  "job_title": "专业技术人员",
+  "target_folder": "",
+  "archive_root": "",
+  "dry_run": true,
+  "max_content_chars": 2000,
+  "auto_delete_empty": true,
+  "recursive": true,
+  "structure_confirmed": false,
+  "structure_confirmed_at": "",
+  "habit_discovery_enabled": false,
+  "habit_discovery_at": "",
+  "discovered_projects": [],
+  "index_enabled": true,
+  "index_snippet_chars": 400,
+  "shortcut_path": "应用快捷方式",
+  "max_path_depth": 4,
+  "project_path_depth": 3,
+  "categories": {
+    "顶层": ["生活", "工作", "应用快捷方式"],
+    "生活": ["财务", "日常"],
+    "日常子类": ["家庭照片", "个人笔记", "医疗记录", "休闲素材", "票证存根"],
+    "财务生活子类": ["银行账单", "税务文件", "保险合同", "投资理财", "收入证明"],
+    "工作": ["办公", "项目", "技术资料"],
+    "办公子类": ["制度文档", "行政表单", "人事档案", "财务单据", "会议记录"],
+    "技术资料子类": ["设计规范", "技术标准", "工艺文件", "产品手册", "技术方案", "图纸说明"],
+    "项目子类模板": ["图纸", "业务往来", "进出货单", "财务票据", "记录照片"]
+  }
+}

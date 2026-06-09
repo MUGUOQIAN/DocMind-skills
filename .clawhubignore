@@ -1,0 +1,5 @@
+# ClawHub 发布时忽略（本 Skill 包内通常无需忽略）
+.DS_Store
+Thumbs.db
+__pycache__/
+*.pyc
