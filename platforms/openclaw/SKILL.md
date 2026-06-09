@@ -12,7 +12,7 @@ metadata: {"openclaw":{"emoji":"📁","homepage":"https://github.com/MUGUOQIAN/D
 
 # DocMind（OpenClaw）
 
-> 规范 Skill 主文件：`skills/docmind/SKILL.md`。
+> 规范 Skill 主文件：仓库根目录 `SKILL.md`。
 
 ## `/docmind` 斜杠命令（确定性分发）
 
@@ -40,7 +40,7 @@ Windows 备选：`powershell -File {baseDir}/scripts/openclaw_dispatch.ps1 <raw-
 
 ## 自然语言触发
 
-未使用斜杠命令时，Agent 按 `skills/docmind/SKILL.md` 中「触发场景」「Agent 执行步骤」执行：先 `preview` 确认，再 `run`；文件归档到 `archive_root`，不支持独立语义搜索。
+未使用斜杠命令时，Agent 按根目录 `SKILL.md` 中「触发场景」「Agent 执行步骤」执行：先 `preview` 确认，再 `run`；已归档文件用 `search` 检索。
 
 ## 参考
 
