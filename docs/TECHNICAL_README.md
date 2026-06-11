@@ -29,7 +29,8 @@
 
 | 变量 | 必填 | 说明 |
 |------|------|------|
-| `DOCMIND_BACKEND_URL` | 是* | 分类/计费 API，默认 `http://127.0.0.1:8000` |
+| `DOCMIND_BACKEND_URL` | 否 | 分类/计费 API，默认 `https://api.blt3d.cn` |
+| `DOCMIND_PLATFORM` | 否 | 计费平台标识，默认 `workbuddy` |
 | `DOCMIND_USER_ID` | 否 | 平台用户 ID，默认 `default-user` |
 | `DOCMIND_REPO_ROOT` | 否 | 非仓库根运行 CLI 时指向本仓库路径 |
 | `DOCMIND_ARCHIVE_ROOT` | 否 | 归档根目录（也可在 setup 中配置） |
@@ -48,6 +49,8 @@ python scripts/docmind.py run --desktop --user-id <ID>
 python scripts/docmind.py undo --desktop --user-id <ID>
 python scripts/docmind.py search --query "关键词" --user-id <ID>
 python scripts/docmind.py rebuild-index --archive "<归档根>"
+python scripts/docmind.py watch --sync-on-start
+python scripts/docmind.py watch-status
 python scripts/docmind.py quota --user-id <ID>
 python scripts/docmind.py confirm-structure
 python scripts/docmind.py discover-habits
@@ -79,7 +82,8 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 客户端指向你的 API：
 
 ```bash
-export DOCMIND_BACKEND_URL=https://your-api.example.com
+export DOCMIND_BACKEND_URL=https://api.blt3d.cn
+export DOCMIND_PLATFORM=workbuddy
 ```
 
 Docker 与 Nginx 见私有仓 `deploy/`。
@@ -89,7 +93,8 @@ Docker 与 Nginx 见私有仓 `deploy/`。
 | 营销表述 | 当前实现 |
 |----------|----------|
 | 无需配置 API Key | 用户无需 DeepSeek Key；需 `DOCMIND_BACKEND_URL` 连接托管 API |
-| 自动监控桌面 | **尚未实现**，规划中 |
+| 归档目录 `watch` | **已实现**（增量索引，本地） |
+| 自动监控桌面并归类 | **尚未实现**，规划中 |
 | 年度订阅 ¥99 | **尚未上线**，规划中 |
 | 语义搜索 | 已实现为 **归档索引搜索**（`search` + `file_index`），非全盘语义向量检索 |
 

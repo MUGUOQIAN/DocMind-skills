@@ -152,6 +152,100 @@ def update_index_from_operations(
     return data
 
 
+def _should_skip_index_path(path: Path) -> bool:
+    if META_DIR in path.parts:
+        return True
+    name = path.name.lower()
+    if name in {"desktop.ini", "thumbs.db", ".ds_store"}:
+        return True
+    if name.startswith("~$") or name.startswith(".~"):
+        return True
+    if path.suffix.lower() in {".tmp", ".temp", ".swp", ".partial"}:
+        return True
+    return False
+
+
+def entry_from_archive_file(
+    file_path: Path,
+    archive_root: Path,
+    *,
+    max_chars: int = 400,
+    session_id: str = "watch",
+) -> dict[str, Any]:
+    """从归档目录中的单个文件构建索引条目。"""
+    f = file_path.resolve()
+    root = archive_root.resolve()
+    rel = f.relative_to(root)
+    parts = rel.parts
+    target_path = "/".join(parts[:-1]) if len(parts) > 1 else ""
+    snippet = ""
+    try:
+        snippet = extract_preview(str(f))[:max_chars]
+    except Exception:
+        snippet = ""
+    return {
+        "filename": f.name,
+        "path": str(f),
+        "source": "",
+        "target_path": target_path.replace("\\", "/"),
+        "archive_root": str(root),
+        "content_snippet": snippet,
+        "indexed_at": _now_iso(),
+        "session_id": session_id,
+        "exists": True,
+        "preview_only": False,
+    }
+
+
+def upsert_index_file(
+    archive_root: str | Path,
+    file_path: str | Path,
+    *,
+    max_chars: int = 400,
+    session_id: str = "watch",
+) -> dict[str, Any] | None:
+    """新增或更新单个文件的索引条目。"""
+    root = Path(archive_root).resolve()
+    f = Path(file_path).resolve()
+    if not f.is_file() or _should_skip_index_path(f):
+        return None
+    try:
+        f.relative_to(root)
+    except ValueError:
+        return None
+    entry = entry_from_archive_file(f, root, max_chars=max_chars, session_id=session_id)
+    data = load_archive_index(root)
+    by_key = {_dedupe_key(e): e for e in data["entries"]}
+    by_key[_dedupe_key(entry)] = entry
+    data["entries"] = list(by_key.values())
+    save_archive_index(root, data)
+    return entry
+
+
+def sync_archive_to_index(
+    archive_root: str | Path,
+    *,
+    max_chars: int = 400,
+    max_files: int = 2000,
+    session_id: str = "watch-bootstrap",
+) -> dict[str, int]:
+    """增量同步：为归档目录中现有文件 upsert 索引（不删除多余条目）。"""
+    root = Path(archive_root).resolve()
+    if not root.is_dir():
+        raise FileNotFoundError(f"归档目录不存在: {root}")
+    upserted = 0
+    skipped = 0
+    for f in root.rglob("*"):
+        if not f.is_file() or _should_skip_index_path(f):
+            skipped += 1
+            continue
+        if upserted >= max_files:
+            break
+        if upsert_index_file(root, f, max_chars=max_chars, session_id=session_id):
+            upserted += 1
+    return {"upserted": upserted, "skipped": skipped}
+
+
 def remove_index_entries(
     archive_root: str | Path,
     paths: list[str],
@@ -263,32 +357,13 @@ def rebuild_index_from_archive(
     entries: list[dict[str, Any]] = []
     count = 0
     for f in root.rglob("*"):
-        if not f.is_file() or META_DIR in f.parts:
+        if not f.is_file() or _should_skip_index_path(f):
             continue
         count += 1
         if count > max_files:
             break
-        rel = f.relative_to(root)
-        parts = rel.parts
-        target_path = "/".join(parts[:-1]) if len(parts) > 1 else ""
-        snippet = ""
-        try:
-            snippet = extract_preview(str(f))[:max_chars]
-        except Exception:
-            snippet = ""
         entries.append(
-            {
-                "filename": f.name,
-                "path": str(f),
-                "source": "",
-                "target_path": target_path.replace("\\", "/"),
-                "archive_root": str(root),
-                "content_snippet": snippet,
-                "indexed_at": _now_iso(),
-                "session_id": "rebuild",
-                "exists": True,
-                "preview_only": False,
-            }
+            entry_from_archive_file(f, root, max_chars=max_chars, session_id="rebuild")
         )
     data = _empty_archive_index(str(root))
     data["entries"] = entries

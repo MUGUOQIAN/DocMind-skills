@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
-import os
-
 import httpx
 
-BACKEND_URL = os.getenv("DOCMIND_BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
+from .constants import backend_url, platform_name
+
+BACKEND_URL = backend_url()
 
 
 def consume_search_quota(
     platform_user_id: str,
     *,
-    platform: str = "docmind",
+    platform: str | None = None,
 ) -> dict:
+    platform = platform or platform_name()
     """每次 search 前扣减 1 次查找额度。"""
     r = httpx.post(
         f"{BACKEND_URL}/api/v1/search/consume",

@@ -7,6 +7,7 @@ from typing import Any
 
 import httpx
 
+from .constants import backend_url
 from .archive_structure import resolve_path_with_existing, scan_archive_dirs
 from .config import desktop_path, load_config
 from .content_extract import extract_preview
@@ -20,7 +21,7 @@ from .classification_rules import normalize_archive_path
 from .setup_wizard import save_config
 from .shortcuts import is_shortcut, shortcut_target_path
 
-BACKEND_URL = os.getenv("DOCMIND_BACKEND_URL", "http://127.0.0.1:8000")
+BACKEND_URL = backend_url()
 SKIP_NAMES = {".docmind", "desktop.ini", "thumbs.db", ".ds_store"}
 LOG_DIR_NAME = ".docmind/logs"
 

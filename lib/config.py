@@ -24,6 +24,7 @@ def default_config() -> dict[str, Any]:
         "discovered_projects": [],
         "index_enabled": True,
         "index_snippet_chars": 400,
+        "index_watch_debounce_secs": 3,
         "shortcut_path": "应用快捷方式",
         "max_path_depth": 4,
         "project_path_depth": 3,

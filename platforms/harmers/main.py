@@ -21,7 +21,9 @@ from lib.organizer import (  # noqa: E402
 from lib.setup_wizard import ensure_config, run_setup_wizard  # noqa: E402
 
 PLATFORM = "harmers"
-BACKEND_URL = os.getenv("DOCMIND_BACKEND_URL", "http://127.0.0.1:8000")
+from lib.constants import backend_url  # noqa: E402
+
+BACKEND_URL = backend_url()
 
 
 def _classify_file(

@@ -56,7 +56,8 @@
 | 确认结构后增量归入 | ✅ | ✅ |
 | 自定义行业 / 分类子类 | ✅ | ✅ |
 | 图片 OCR | ✅* | ✅* |
-| 自动监控桌面新文件 | 🔜 规划中 | 🔜 规划中 |
+| 归档目录监视（`watch` 增量索引） | ✅ | ✅ |
+| 自动监控桌面并归类 | 🔜 规划中 | 🔜 规划中 |
 
 \* 需在本机安装 Tesseract；OCR 在客户端本地执行。
 
@@ -92,9 +93,10 @@ python -m venv .venv
 # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# 由服务商提供的云端 API 地址
-export DOCMIND_BACKEND_URL=https://api.example.com
+# 默认生产 API（本地开发可改为 http://127.0.0.1:8000）
+export DOCMIND_BACKEND_URL=https://api.blt3d.cn
 export DOCMIND_USER_ID=your-platform-user-id
+export DOCMIND_PLATFORM=workbuddy
 
 python scripts/docmind.py setup
 python scripts/docmind.py preview --desktop --user-id <ID>
@@ -105,7 +107,7 @@ python scripts/docmind.py search --query "东方广场 合同" --user-id <ID>
 | 平台 | 安装方式 |
 |------|----------|
 | **OpenClaw** | 克隆本仓库到 skills 目录，或 ClawHub；见 `platforms/openclaw/` |
-| **WorkBuddy** | 复制到 `~/.workbuddy/skills/docmind/` |
+| **WorkBuddy** | 复制到 `~/.workbuddy/skills/docmind/`；见 `platforms/workbuddy/SKILL.md` |
 | **命令行** | 本仓库 `scripts/docmind.py` |
 
 `{baseDir}` = 含 `SKILL.md` 的目录。非仓库根运行时设置 `DOCMIND_REPO_ROOT`。
@@ -119,7 +121,9 @@ DocMind-skills/
 ├── SKILL.md             # Agent 技能说明
 ├── scripts/docmind.py   # 统一 CLI
 ├── lib/                 # 本地整理、索引、配置
-├── platforms/           # OpenClaw / WorkBuddy / Harmers 入口
+├── platforms/           # WorkBuddy / OpenClaw / Harmers 入口与 SKILL
+├── references/security.md
+├── docs/SKILLHUB_LISTING.md
 ├── references/          # 规则、API、配置说明
 ├── setup.py             # 首次配置引导
 └── requirements.txt

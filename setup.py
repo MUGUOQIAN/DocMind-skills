@@ -19,8 +19,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="DocMind 配置引导")
     parser.add_argument(
         "--platform",
-        default="docmind",
-        help="平台标识：harmers / workbuddy / openclaw",
+        default="workbuddy",
+        help="平台标识：workbuddy / openclaw / harmers",
     )
     parser.add_argument(
         "--force",

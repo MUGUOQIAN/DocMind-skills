@@ -1,52 +1,15 @@
 ---
 name: docmind
-description: "Organize and classify local files by content into 生活/工作 archive folders; search archived files via file index. Use when the user wants to tidy desktop, clean up Downloads, sort messy files, says 整理桌面/文件太乱了, asks to preview or run organization, or wants to find/search/locate already archived files (找文件/合同在哪/搜一下归档)."
-version: 1.5.0
+description: "智能文件整理：按内容归类到生活/工作目录，在已归档文件中快速检索。Organize local files by content into 生活/工作 archive folders and search via file index. 触发：整理桌面、文件太乱了、找合同、搜归档、清理下载目录。"
+version: 1.6.1
+license: MIT
 homepage: https://github.com/MUGUOQIAN/DocMind-skills
 user-invocable: true
-allowed-tools: Read, Write, Bash, Glob, Grep
-command-dispatch: tool
-command-tool: bash
-command-arg-mode: raw
+allowed-tools: Read, Write, Glob, Grep, Bash(python:*)
 metadata:
-  openclaw:
-    emoji: "📁"
-    homepage: https://github.com/MUGUOQIAN/DocMind-skills
-    os:
-      - win32
-      - darwin
-      - linux
-    requires:
-      anyBins:
-        - python
-        - python3
-    primaryEnv: DOCMIND_BACKEND_URL
-    envVars:
-      - name: DOCMIND_BACKEND_URL
-        required: false
-        description: Classify/billing API base URL. Default http://127.0.0.1:8000
-      - name: DOCMIND_REPO_ROOT
-        required: false
-        description: DocMind-skills repo root when Skill is not run from clone directory.
-      - name: DOCMIND_USER_ID
-        required: false
-        description: Platform user id for quota and billing. Default default-user.
-      - name: DOCMIND_INDUSTRY
-        required: false
-        description: User industry for assisted classification.
-      - name: DOCMIND_JOB_TITLE
-        required: false
-        description: User job title for assisted classification.
-      - name: DOCMIND_TARGET_FOLDER
-        required: false
-        description: Folder to organize.
-      - name: DOCMIND_ARCHIVE_ROOT
-        required: false
-        description: Archive destination root.
-    install:
-      - kind: uv
-        package: httpx
-        bins: []
+  author: MUGUOQIAN
+  category: 文档处理
+  backend: https://api.blt3d.cn
 ---
 
 # DocMind — 智能文件整理
@@ -76,6 +39,7 @@ metadata:
 | `run` | 更新索引，`exists: true`（文件已归档） |
 | `undo` | 从索引移除对应条目 |
 | `rebuild-index` | 扫描归档目录重建（修复缺失索引或补全摘要） |
+| `watch` | 监视 `archive_root` 变动，增量更新索引（本地，不耗整理额度） |
 
 索引文件位置：
 
@@ -85,23 +49,38 @@ metadata:
 
 每条记录字段：`filename`、`path`（完整路径）、`target_path`（如 `工作/东方广场改造/图纸`）、`content_snippet`（内容摘要）、`score`（仅 search 输出）。
 
+### 索引监视（保持 search 可用）
+
+归档目录内文件被用户手动增删改后，应启动 **`watch`** 使索引保持新鲜（仅监视 `archive_root`，不扫全盘）：
+
+```bash
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py watch --sync-on-start
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py watch-status
+```
+
+- 首次建议加 `--sync-on-start` 增量同步现有文件
+- 前台运行直至 Ctrl+C；状态写入 `<archive_root>/.docmind/watch_state.json`
+- **不消耗**整理会话额度；本地提取摘要更新索引
+- 长驻场景：WorkBuddy 下用 `Start-Process`（Windows）或 `nohup … &`（macOS/Linux）后台运行；见 `platforms/workbuddy/SKILL.md`
+
 ### Agent 执行 SOP（查找文件）
 
 1. **判断意图**：用户要找的是**已归档**文件 → 走本流程；若要整理新文件 → 走「整理」流程（preview → run）。
-2. **确定归档根** `archive_root`：
+2. **索引是否新鲜**：若用户常手动改归档目录，先 `watch-status`；未监视则启动 `watch` 或 `rebuild-index`。
+3. **确定归档根** `archive_root`：
    - 读取 `~/.docmind/config.json` 的 `archive_root`
    - 或环境变量 `DOCMIND_ARCHIVE_ROOT`
    - 用户明确指定路径时使用 `--archive`
    - 多个归档且用户未说明 → 先不带 `--archive` 全局搜，或反问归档位置
-3. **执行搜索**（首选；每次扣 1 次查找额度，需 `--user-id` 与后端在线）：
+4. **执行搜索**（首选；每次扣 1 次查找额度，需 `--user-id` 与后端在线）：
 
 ```bash
-python {baseDir}/scripts/docmind.py search --query "东方广场 合同" --user-id <平台用户ID>
-python {baseDir}/scripts/docmind.py search --query "银行账单" --archive "C:/Users/me/DocMind归档" --user-id <ID>
-python {baseDir}/scripts/docmind.py search --query "发票" --limit 10 --user-id <ID>
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py search --query "东方广场 合同" --user-id <平台用户ID>
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py search --query "银行账单" --archive "C:/Users/me/DocMind归档" --user-id <ID>
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py search --query "发票" --limit 10 --user-id <ID>
 ```
 
-4. **解析 JSON 输出**（stdout）：
+5. **解析 JSON 输出**（stdout）：
 
 ```json
 {
@@ -125,29 +104,20 @@ python {baseDir}/scripts/docmind.py search --query "发票" --limit 10 --user-id
 }
 ```
 
-5. **向用户汇报**：列出 `count`、每条结果的**文件名**、**分类路径** `target_path`、**完整路径** `path`；可引用 `content_snippet` 说明匹配原因。按 `score` 从高到低展示。若 `billing.billing_type` 为 `free`，可提示本月剩余免费查找次数。
-6. **`count` 为 0 时的恢复顺序**（依次尝试，并向用户说明）：
+6. **向用户汇报**：列出 `count`、每条结果的**文件名**、**分类路径** `target_path`、**完整路径** `path`；可引用 `content_snippet` 说明匹配原因。按 `score` 从高到低展示。若 `billing.billing_type` 为 `free`，可提示本月剩余免费查找次数。
+7. **`count` 为 0 时的恢复顺序**（依次尝试，并向用户说明）：
    - 换更短或更具体的关键词（如「东方广场」→「合同」）
    - 指定 `--archive` 若之前未指定
    - Read `<archive_root>/.docmind/file_index.md` 人工浏览
    - 若索引文件不存在或明显过旧：`rebuild-index`（会扫描磁盘提取摘要，较慢）
 
 ```bash
-python {baseDir}/scripts/docmind.py rebuild-index --archive "C:/Users/me/DocMind归档"
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py rebuild-index --archive "C:/Users/me/DocMind归档"
 ```
 
    重建后再次 `search`。
-7. **HTTP 402 / `payment_required`**：本月免费 20 次查找已用完，提示订阅（9.9 元/月）或购买查找次数（0.05 元/次）；可用 `quota` 查询剩余额度。
-8. **仍无结果**：说明该文件可能从未被 DocMind 整理进该归档；建议对源目录（桌面/下载）执行 `preview` 再 `run`，或请用户提供更多线索（大致日期、文件类型）。
-
-### OpenClaw 斜杠命令（检索）
-
-```bash
-python {baseDir}/scripts/openclaw_dispatch.py search --query "东方广场 合同"
-python {baseDir}/scripts/openclaw_dispatch.py rebuild-index --archive "C:/Users/me/DocMind归档"
-```
-
-示例：`/docmind search 东方广场 合同`
+8. **HTTP 402 / `payment_required`**：本月免费 20 次查找已用完，提示订阅（9.9 元/月）或购买查找次数（0.05 元/次）；可用 `quota` 查询剩余额度。
+9. **仍无结果**：说明该文件可能从未被 DocMind 整理进该归档；建议对源目录（桌面/下载）执行 `preview` 再 `run`，或请用户提供更多线索（大致日期、文件类型）。
 
 ### 检索对话示例
 
@@ -155,7 +125,7 @@ python {baseDir}/scripts/openclaw_dispatch.py rebuild-index --archive "C:/Users/
 
 **Agent**：
 
-1. `python {baseDir}/scripts/docmind.py search --query "东方广场 合同"`
+1. `python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py search --query "东方广场 合同"`
 2. 若 `count >= 1`：回复「找到 N 个文件」，列出路径
 3. 若 `count == 0`：检查 config 中 `archive_root` → 带 `--archive` 重试 → 必要时 `rebuild-index` 后再搜
 
@@ -183,7 +153,7 @@ python {baseDir}/scripts/openclaw_dispatch.py rebuild-index --archive "C:/Users/
    - 无法确定 → 反问：「请问您想整理哪个文件夹？（例如：桌面、下载目录）」
 
 2. **首次使用检查配置**：
-   - 若无 `~/.docmind/config.json`，先执行 `setup`（含可选习惯学习）
+   - 若无 `~/.docmind/config.json`：WorkBuddy 用环境变量非交互配置（见上文）；命令行可执行 `setup`
 
 3. **内容分析与预览**（必须先做）：
    - 运行 `preview`（不移动文件）
@@ -212,46 +182,71 @@ python {baseDir}/scripts/openclaw_dispatch.py rebuild-index --archive "C:/Users/
 
 **Agent**：
 
-1. `python {baseDir}/scripts/docmind.py preview --desktop --user-id <ID>`
+1. `python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py preview --desktop --user-id <ID>`
 2. 展示预览结果，询问是否执行
-3. 用户确认后：`python {baseDir}/scripts/docmind.py run --desktop --user-id <ID>`
+3. 用户确认后：`python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py run --desktop --user-id <ID>`
 
 ## 前置条件
 
-1. **Python 3.10+** 与 `httpx`（`pip install httpx`）
-2. **整理类命令**（`preview` / `run` / `quota`）需 **DocMind 后端**（默认 `http://127.0.0.1:8000/health`）
-3. **`search`** 需后端在线以扣减查找额度；**`rebuild-index`** 仅需本地 Python
-4. **仓库**：克隆 [DocMind-skills](https://github.com/MUGUOQIAN/DocMind-skills)；非仓库根运行时时设 `DOCMIND_REPO_ROOT`
-
-## OpenClaw 斜杠命令（`/docmind`）
+1. **Python 3.10+**，安装依赖：
 
 ```bash
-python {baseDir}/scripts/openclaw_dispatch.py <raw-args>
+pip install -r ${CODEBUDDY_SKILL_DIR}/requirements.txt
 ```
 
-示例：
+2. **DocMind API** 默认 `https://api.blt3d.cn`（`DOCMIND_BACKEND_URL` 可覆盖；本地开发可用 `http://127.0.0.1:8000`）
+3. **`search`** 需 API 在线以扣减查找额度；**`rebuild-index`** / **`watch`** 仅需本地 Python
+4. 非 Skill 目录运行时设置 `DOCMIND_REPO_ROOT` 指向 [DocMind-skills](https://github.com/MUGUOQIAN/DocMind-skills) 根目录
 
-- `/docmind preview --desktop`
-- `/docmind search 东方广场 合同`
-- `/docmind rebuild-index --archive "C:/Users/me/DocMind归档"`
+## 腾讯 WorkBuddy（推荐）
 
-Windows：`powershell -File {baseDir}/scripts/openclaw_dispatch.ps1 preview --desktop`
+安装路径：`~/.workbuddy/skills/docmind/`。详见 `platforms/workbuddy/SKILL.md`。
+
+Agent **优先**通过分发脚本调用（自动注入 `--user-id` 与 `platform=workbuddy`）：
+
+```bash
+python ${CODEBUDDY_SKILL_DIR}/scripts/workbuddy_dispatch.py preview --desktop
+python ${CODEBUDDY_SKILL_DIR}/scripts/workbuddy_dispatch.py run --desktop
+python ${CODEBUDDY_SKILL_DIR}/scripts/workbuddy_dispatch.py search --query "东方广场 合同"
+```
+
+**首次配置（非交互）**：Agent 环境勿用交互式 `setup`。用环境变量或复制 `config.example.json` → `~/.docmind/config.json`：
+
+```bash
+export DOCMIND_INDUSTRY=建筑
+export DOCMIND_ARCHIVE_ROOT=C:/Users/me/DocMind归档
+export DOCMIND_SKIP_SETUP=1
+```
+
+用户 ID 优先级：`--user-id` > `DOCMIND_USER_ID` > `${CODEBUDDY_SESSION_ID}`。
+
+**`watch` 后台运行**（Windows）：
+
+```powershell
+Start-Process python -ArgumentList "${CODEBUDDY_SKILL_DIR}/scripts/workbuddy_dispatch.py watch --sync-on-start" -WindowStyle Hidden
+```
+
+## OpenClaw 斜杠命令
+
+OpenClaw 专用 frontmatter 与 `/docmind` 斜杠命令见 `platforms/openclaw/SKILL.md`。
 
 ## 统一 CLI
 
-Skill 目录：`{baseDir}`
+Skill 目录：`${CODEBUDDY_SKILL_DIR}`
 
 ```bash
-python {baseDir}/scripts/docmind.py setup
-python {baseDir}/scripts/docmind.py preview --desktop --user-id <平台用户ID>
-python {baseDir}/scripts/docmind.py preview --folder "C:/Users/me/Downloads" --user-id <平台用户ID>
-python {baseDir}/scripts/docmind.py run --desktop --user-id <平台用户ID>
-python {baseDir}/scripts/docmind.py undo --folder "C:/Users/me/Desktop" --user-id <平台用户ID>
-python {baseDir}/scripts/docmind.py discover-habits
-python {baseDir}/scripts/docmind.py confirm-structure
-python {baseDir}/scripts/docmind.py quota --user-id <平台用户ID>
-python {baseDir}/scripts/docmind.py search --query "东方广场 合同"
-python {baseDir}/scripts/docmind.py rebuild-index --archive "C:/Users/me/DocMind归档"
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py setup
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py preview --desktop --user-id <平台用户ID>
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py preview --folder "C:/Users/me/Downloads" --user-id <平台用户ID>
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py run --desktop --user-id <平台用户ID>
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py undo --folder "C:/Users/me/Desktop" --user-id <平台用户ID>
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py discover-habits
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py confirm-structure
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py quota --user-id <平台用户ID>
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py search --query "东方广场 合同"
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py rebuild-index --archive "C:/Users/me/DocMind归档"
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py watch --sync-on-start
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py watch-status
 ```
 
 ## 归档路径示例
@@ -276,14 +271,17 @@ python {baseDir}/scripts/docmind.py rebuild-index --archive "C:/Users/me/DocMind
 - `Read`：读取待整理文件内容预览（不上传原文件）
 - `Write` / `Bash`：移动文件、执行 CLI
 - `Glob` / `Grep`：仅辅助定位**未整理**源目录中的文件；**已归档**文件必须用 `search` 或 Read `file_index.md`
-- 需访问 `DOCMIND_BACKEND_URL`（生产环境用 HTTPS）
+- API 默认 `https://api.blt3d.cn`；仅传文件名与内容摘要，不上传原文件
+- 详见 `${CODEBUDDY_SKILL_DIR}/references/security.md`
 
 ## 参考文档
 
-- 分类规则：`{baseDir}/references/classification-rules.md`
-- 配置与环境变量：`{baseDir}/references/configuration.md`
-- 后端 API：`{baseDir}/references/api.md`
-- 文件索引：`{baseDir}/references/file-index.md`
+- 分类规则：`${CODEBUDDY_SKILL_DIR}/references/classification-rules.md`
+- 配置与环境变量：`${CODEBUDDY_SKILL_DIR}/references/configuration.md`
+- 后端 API：`${CODEBUDDY_SKILL_DIR}/references/api.md`
+- 文件索引：`${CODEBUDDY_SKILL_DIR}/references/file-index.md`
+- 安全与隐私：`${CODEBUDDY_SKILL_DIR}/references/security.md`
+- WorkBuddy 安装：`${CODEBUDDY_SKILL_DIR}/platforms/workbuddy/SKILL.md`
 
 ## 计费
 
@@ -300,5 +298,5 @@ python {baseDir}/scripts/docmind.py rebuild-index --archive "C:/Users/me/DocMind
 
 ## 版本
 
-- Skill：1.5.0（独立客户端仓 DocMind-skills）
+- Skill：1.6.1（WorkBuddy 上架适配：生产 API、workbuddy_dispatch、安全披露）
 - 分类规则：`references/classification-rules.md`

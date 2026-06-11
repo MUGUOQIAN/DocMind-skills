@@ -42,7 +42,7 @@ def _run(repo: Path, args: list[str]) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="DocMind Skill CLI")
-    parser.add_argument("--user-id", default=os.getenv("DOCMIND_USER_ID", "default-user"))
+    parser.add_argument("--user-id", default=None)
     parser.add_argument("--repo", help="DocMind-skills 根目录（覆盖 DOCMIND_REPO_ROOT）")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
@@ -70,14 +70,34 @@ def main() -> int:
     p_search.add_argument("--limit", type=int, default=20)
 
     p_rebuild = sub.add_parser("rebuild-index", help="扫描归档目录重建文件索引")
-    p_rebuild.add_argument("--archive", required=True, help="归档根目录")
+    p_rebuild.add_argument("--archive", help="归档根目录（默认读配置）")
+
+    p_watch = sub.add_parser("watch", help="监视归档目录变动并增量更新索引")
+    p_watch.add_argument("--archive", help="归档根目录（默认读配置 archive_root）")
+    p_watch.add_argument(
+        "--debounce",
+        type=float,
+        default=None,
+        help="防抖秒数（默认 3，或配置 index_watch_debounce_secs）",
+    )
+    p_watch.add_argument(
+        "--sync-on-start",
+        action="store_true",
+        help="启动时先增量同步现有文件到索引",
+    )
+
+    sub.add_parser("watch-status", help="查看归档目录索引监视状态")
 
     args = parser.parse_args()
     if args.repo:
         os.environ["DOCMIND_REPO_ROOT"] = args.repo
     repo = find_client_root()
+    sys.path.insert(0, str(repo))
+    from lib.constants import platform_name, resolve_user_id  # noqa: E402
+
     py = sys.executable
-    uid = args.user_id
+    uid = resolve_user_id(args.user_id)
+    platform = platform_name()
     wb = repo / "platforms" / "workbuddy" / "main.py"
     setup = repo / "setup.py"
 
@@ -91,13 +111,14 @@ def main() -> int:
     if args.cmd == "quota":
         import httpx
 
-        base = os.getenv("DOCMIND_BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
-        r = httpx.get(f"{base}/api/v1/user/{uid}", timeout=30)
+        from lib.constants import backend_url  # noqa: E402
+
+        r = httpx.get(f"{backend_url()}/api/v1/user/{uid}", timeout=30)
         r.raise_for_status()
         print(json.dumps(r.json(), ensure_ascii=False, indent=2))
         return 0
 
-    if args.cmd in ("search", "rebuild-index"):
+    if args.cmd in ("search", "rebuild-index", "watch", "watch-status"):
         sys.path.insert(0, str(repo))
         from lib.config import load_config  # noqa: E402
         from lib.file_index import (  # noqa: E402
@@ -107,14 +128,55 @@ def main() -> int:
         )
 
         cfg = load_config()
-        archive = args.archive or cfg.get("archive_root") or None
+        archive = getattr(args, "archive", None) or cfg.get("archive_root") or None
+
+        if args.cmd == "watch-status":
+            from lib.index_watcher import read_watch_state  # noqa: E402
+
+            if not archive:
+                raise SystemExit("请指定 --archive 或在配置中设置 archive_root")
+            state = read_watch_state(archive)
+            out = {
+                "archive_root": str(Path(archive).resolve()),
+                "watching": state is not None,
+                "state": state,
+                "index_paths": index_paths_for_agent(archive),
+            }
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0
+
+        if args.cmd == "watch":
+            from lib.index_watcher import run_watch  # noqa: E402
+
+            if not archive:
+                raise SystemExit("请指定 --archive 或在配置中设置 archive_root")
+            debounce = args.debounce
+            if debounce is None:
+                debounce = float(cfg.get("index_watch_debounce_secs", 3))
+            max_chars = int(cfg.get("index_snippet_chars", 400))
+            try:
+                return run_watch(
+                    archive,
+                    debounce_sec=debounce,
+                    max_chars=max_chars,
+                    sync_on_start=args.sync_on_start,
+                )
+            except ImportError:
+                print(
+                    "缺少 watchdog 依赖，请执行: pip install watchdog",
+                    file=sys.stderr,
+                )
+                return 1
+
+        if args.cmd == "rebuild-index" and not archive:
+            raise SystemExit("rebuild-index 需要 --archive 或在配置中设置 archive_root")
         if args.cmd == "search":
             import httpx
 
             from lib.billing_client import consume_search_quota  # noqa: E402
 
             try:
-                billing = consume_search_quota(uid, platform="docmind")
+                billing = consume_search_quota(uid, platform=platform)
             except httpx.HTTPStatusError as exc:
                 if exc.response.status_code == 402:
                     detail = exc.response.json().get("detail", {})
@@ -159,6 +221,7 @@ def main() -> int:
         )
         return 0
 
+    os.environ.setdefault("DOCMIND_PLATFORM", "workbuddy")
     cmd = [py, str(wb), "--user-id", uid, "--no-setup"]
     if args.cmd == "preview":
         cmd.append("--preview")

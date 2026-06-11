@@ -1,18 +1,19 @@
 ---
 name: docmind
 description: "Organize and classify local files by content into 生活/工作 archive folders. Use when the user wants to tidy desktop, clean up Downloads, sort messy files, or says 整理桌面/文件太乱了."
-version: 1.0.1
-homepage: https://github.com/MUGUOQIAN/DocMind
+version: 1.6.1
+homepage: https://github.com/MUGUOQIAN/DocMind-skills
 user-invocable: true
 command-dispatch: tool
 command-tool: bash
 command-arg-mode: raw
-metadata: {"openclaw":{"emoji":"📁","homepage":"https://github.com/MUGUOQIAN/DocMind","skillKey":"docmind","os":["win32","darwin","linux"],"requires":{"anyBins":["python","python3"]},"primaryEnv":"DOCMIND_BACKEND_URL","envVars":[{"name":"DOCMIND_BACKEND_URL","required":false,"description":"DocMind API URL"},{"name":"DOCMIND_REPO_ROOT","required":false,"description":"Repo root when skill installed without clone"},{"name":"DOCMIND_USER_ID","required":false,"description":"User id for billing"}]}}
+allowed-tools: Read, Write, Glob, Grep, Bash(python:*)
+metadata: {"openclaw":{"emoji":"📁","homepage":"https://github.com/MUGUOQIAN/DocMind-skills","skillKey":"docmind","os":["win32","darwin","linux"],"requires":{"anyBins":["python","python3"]},"primaryEnv":"DOCMIND_BACKEND_URL","envVars":[{"name":"DOCMIND_BACKEND_URL","required":false,"description":"DocMind API URL, default https://api.blt3d.cn"},{"name":"DOCMIND_REPO_ROOT","required":false,"description":"Repo root when skill installed without clone"},{"name":"DOCMIND_USER_ID","required":false,"description":"User id for billing"},{"name":"DOCMIND_PLATFORM","required":false,"description":"Billing platform tag, default openclaw when using openclaw_dispatch"}]}}
 ---
 
 # DocMind（OpenClaw）
 
-> 规范 Skill 主文件：仓库根目录 `SKILL.md`。
+> 规范 Skill 主文件：仓库根目录 `SKILL.md` 含完整 SOP；本文件为 OpenClaw 斜杠命令配置。
 
 ## `/docmind` 斜杠命令（确定性分发）
 
@@ -33,8 +34,9 @@ python {baseDir}/scripts/openclaw_dispatch.py <raw-args>
 | `/docmind quota` | `python {baseDir}/scripts/openclaw_dispatch.py quota` |
 | `/docmind undo --desktop` | `python {baseDir}/scripts/openclaw_dispatch.py undo --desktop` |
 | `/docmind search 东方广场 合同` | `python {baseDir}/scripts/openclaw_dispatch.py search --query "东方广场 合同"` |
+| `/docmind watch --sync-on-start` | `python {baseDir}/scripts/openclaw_dispatch.py watch --sync-on-start` |
 
-`openclaw_dispatch.py` 会自动附加 `--user-id`（来自 `DOCMIND_USER_ID`）。
+`openclaw_dispatch.py` 会自动附加 `--user-id`（来自 `DOCMIND_USER_ID`）并设置 `DOCMIND_PLATFORM=openclaw`。
 
 Windows 备选：`powershell -File {baseDir}/scripts/openclaw_dispatch.ps1 <raw-args>`
 
