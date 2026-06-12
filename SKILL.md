@@ -1,7 +1,7 @@
 ---
 name: docmind
 description: "智能文件整理：按内容归类到生活/工作目录，在已归档文件中快速检索。Organize local files by content into 生活/工作 archive folders and search via file index. 触发：整理桌面、文件太乱了、找合同、搜归档、清理下载目录。"
-version: 1.6.1
+version: 1.6.2
 license: MIT
 homepage: https://github.com/MUGUOQIAN/DocMind-skills
 user-invocable: true
@@ -104,7 +104,7 @@ python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py search --query "发票" --limit
 }
 ```
 
-6. **向用户汇报**：列出 `count`、每条结果的**文件名**、**分类路径** `target_path`、**完整路径** `path`；可引用 `content_snippet` 说明匹配原因。按 `score` 从高到低展示。若 `billing.billing_type` 为 `free`，可提示本月剩余免费查找次数。
+6. **向用户汇报**：列出 `count`、每条结果的**文件名**、**分类路径** `target_path`、**完整路径** `path`；可引用 `content_snippet` 说明匹配原因。按 `score` 从高到低展示。若 `billing.billing_type` 为 `free`，可提示本月剩余免费查找次数；新用户可说明处于 **3 个月免费试用期**（`quota` 返回 `free_trial_days_remaining`）。
 7. **`count` 为 0 时的恢复顺序**（依次尝试，并向用户说明）：
    - 换更短或更具体的关键词（如「东方广场」→「合同」）
    - 指定 `--archive` 若之前未指定
@@ -116,7 +116,7 @@ python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py rebuild-index --archive "C:/Use
 ```
 
    重建后再次 `search`。
-8. **HTTP 402 / `payment_required`**：本月免费 20 次查找已用完，提示订阅（9.9 元/月）或购买查找次数（0.05 元/次）；可用 `quota` 查询剩余额度。
+8. **HTTP 402 / `payment_required`**：试用期内本月免费次数用尽，或 3 个月试用期已结束 → 提示订阅（9.9 元/月）或按次购买；可用 `quota` 查看 `free_trial_active` 与剩余天数。
 9. **仍无结果**：说明该文件可能从未被 DocMind 整理进该归档；建议对源目录（桌面/下载）执行 `preview` 再 `run`，或请用户提供更多线索（大致日期、文件类型）。
 
 ### 检索对话示例
@@ -172,7 +172,7 @@ python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py rebuild-index --archive "C:/Use
 
 6. **查找已归档文件**：
    - 执行「文件索引检索」SOP：`search` → 解析 JSON → 汇报路径
-   - 每次 `search` 扣 **1 次查找额度**（免费 20 次/月；超出 0.05 元/次）
+   - 每次 `search` 扣 **1 次查找额度**（试用期内每月 20 次；超出 0.05 元/次）
    - `rebuild-index` 免费；浏览备选 Read `file_index.md`
    - **不消耗**整理会话额度，但需后端在线以扣减查找额度
 
@@ -285,18 +285,19 @@ python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py watch-status
 
 ## 计费
 
-| 操作 | 免费额度 | 超出后 | 订阅 |
-|------|----------|--------|------|
-| `preview` / `rebuild-index` | 无限免费 | — | — |
+| 操作 | 免费试用（前 3 个月） | 超出后 | 订阅 |
+|------|----------------------|--------|------|
+| `preview` / `rebuild-index` / `watch` | 始终免费 | — | — |
 | `run`（整理） | 5 次/月 | 2 元/次 | 9.9 元/月无限 |
 | `search`（查找） | 20 次/月 | 0.05 元/次 | 9.9 元/月无限 |
 
-- 一次 `run` = 1 次整理会话（会话内最多约 500 个文件，不按文件另计费）
-- 一次 `search` = 1 次查找
-- 用 `quota --user-id <ID>` 查询剩余免费整理/查找次数与按次余额
+- **新用户自动享 3 个月免费试用**（自首次 API 调用起算）；试用期内每月额度自然月重置
+- 试用期结束后不再赠送月度免费额度，需订阅或按次付费
+- 一次 `run` = 1 次整理会话（会话内最多约 500 个文件）
+- 用 `quota --user-id <ID>` 查询 `free_trial_active`、`free_trial_days_remaining` 及剩余次数
 - HTTP 402 时提示充值或订阅；Skill 本身无定价元数据
 
 ## 版本
 
-- Skill：1.6.1（WorkBuddy 上架适配：生产 API、workbuddy_dispatch、安全披露）
+- Skill：1.6.2（新用户 3 个月免费试用）
 - 分类规则：`references/classification-rules.md`

@@ -28,7 +28,7 @@ python {baseDir}/scripts/docmind.py search --query "东方广场 合同" --user-
 python {baseDir}/scripts/docmind.py search --query "银行账单" --archive "C:/Users/me/DocMind归档"
 ```
 
-免费档每月 20 次查找；超出 0.05 元/次；订阅 9.9 元/月无限。`rebuild-index` 免费。
+新用户 3 个月试用期内每月 20 次查找；超出 0.05 元/次；订阅 9.9 元/月无限。`rebuild-index` / `watch` 免费。
 
 **或直接 Read**
 

@@ -50,7 +50,7 @@
 { "platform_user_id": "user-1", "platform": "workbuddy" }
 ```
 
-每次 `search` 扣 **1 次查找额度**（免费 20 次/月，超出 0.05 元/次；订阅无限）。
+每次 `search` 扣 **1 次查找额度**（试用期内每月 20 次，超出 0.05 元/次；订阅无限）。
 
 响应：`billing_type`、`free_search_remaining`、`search_credits`
 
@@ -60,7 +60,7 @@
 
 `GET /api/v1/user/{platform_user_id}`
 
-返回整理与查找的已用/剩余免费次数、`organize_credits`、`search_credits` 及 `pricing` 定价说明。
+返回 `free_trial_active`、`free_trial_expire`、`free_trial_days_remaining`、整理与查找的已用/剩余免费次数、`organize_credits`、`search_credits` 及 `pricing`（含 `free_trial_months`）。
 
 ## 支付 Webhook
 

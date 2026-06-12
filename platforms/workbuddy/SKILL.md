@@ -1,7 +1,7 @@
 ---
 name: docmind
 description: "智能文件整理：按内容归类到生活/工作目录，在已归档文件中快速检索。触发词：整理桌面、文件太乱了、找合同、搜归档、清理下载目录。"
-version: 1.6.1
+version: 1.6.2
 license: MIT
 homepage: https://github.com/MUGUOQIAN/DocMind-skills
 user-invocable: true
