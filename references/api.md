@@ -60,7 +60,26 @@
 
 `GET /api/v1/user/{platform_user_id}`
 
-返回 `free_trial_active`、`free_trial_expire`、`free_trial_days_remaining`、整理与查找的已用/剩余免费次数、`organize_credits`、`search_credits` 及 `pricing`（含 `free_trial_months`）。
+返回 `free_trial_active`、`free_trial_expire`、`free_trial_days_remaining`、整理与查找的已用/剩余免费次数、`organize_credits`、`search_credits` 及 `pricing`（含 `free_trial_months`、`subscription_annual_yuan`）。
+
+## 可购产品
+
+`GET /api/v1/products`
+
+返回 SKU 列表（整理按次、查找包、月订、年订 ¥99），供客户端在 402 时展示。
+
+## 运营充值
+
+`POST /api/v1/admin/grant`（Header: `X-Admin-Key` = `ADMIN_SECRET_KEY`）
+
+```json
+{
+  "platform_user_id": "user-1",
+  "organize_credits": 5,
+  "search_credits": 20,
+  "subscription_days": 30
+}
+```
 
 ## 支付 Webhook
 
@@ -68,4 +87,6 @@
 
 - `event: credits` — 增加整理按次余额（2 元/次）
 - `event: search_credits` — 增加查找按次余额（0.05 元/次）
-- `event: subscription` — 延长订阅（9.9 元/月，整理与查找均无限）
+- `event: subscription` — 延长订阅（`subscription_days` 天）
+- `event: subscription_monthly` — +30 天
+- `event: subscription_annual` — +365 天（¥99 年订）
