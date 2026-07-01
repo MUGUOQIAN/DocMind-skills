@@ -57,7 +57,21 @@
 | 自定义行业 / 分类子类 | ✅ | ✅ |
 | 图片 OCR | ✅* | ✅* |
 | 归档目录监视（`watch` 增量索引） | ✅ | ✅ |
-| 自动监视桌面并归类（`monitor`） | ✅ preview 免费 / run 扣整理额度 | ✅ |
+| 自动监视桌面/下载并归类（`monitor`） | ✅ preview 免费 / run 扣整理额度 | ✅ |
+| **桌面应用**（macOS / Windows GUI） | ✅ | ✅ |
+
+## 桌面应用（macOS / Windows）
+
+图形界面，无需命令行或 Agent：
+
+```bash
+pip install -r requirements.txt -r desktop/requirements.txt
+python desktop/main.py
+# 或
+python scripts/docmind.py gui
+```
+
+Windows 安装后双击桌面 **「DocMind 应用」** 快捷方式。详见 [desktop/README.md](desktop/README.md)。
 
 ---
 

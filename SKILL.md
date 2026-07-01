@@ -1,7 +1,7 @@
 ---
 name: docmind
 description: "智能文件整理：按内容归类到生活/工作目录，在已归档文件中快速检索。Organize local files by content into 生活/工作 archive folders and search via file index. 触发：整理桌面、文件太乱了、找合同、搜归档、清理下载目录。"
-version: 1.7.0
+version: 1.8.0
 license: MIT
 homepage: https://github.com/MUGUOQIAN/DocMind-skills
 user-invocable: true
@@ -40,7 +40,8 @@ metadata:
 | `undo` | 从索引移除对应条目 |
 | `rebuild-index` | 扫描归档目录重建（修复缺失索引或补全摘要） |
 | `watch` | 监视 `archive_root` 变动，增量更新索引（本地，不耗整理额度） |
-| `monitor` | 监视**待整理目录**（桌面等），有新文件时自动 preview/run |
+| `gui` | 启动桌面图形应用（macOS / Windows） |
+| `monitor` | 监视**待整理目录**（桌面/下载/指定目录），有新文件时自动 preview/run |
 
 索引文件位置：
 
@@ -64,14 +65,19 @@ python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py watch-status
 - **不消耗**整理会话额度；本地提取摘要更新索引
 - 长驻场景：WorkBuddy 下用 `Start-Process`（Windows）或 `nohup … &`（macOS/Linux）后台运行；见 `platforms/workbuddy/SKILL.md`
 
-### 自动监视待整理目录（桌面等）
+### 自动监视待整理目录（桌面 / 下载 / 指定目录）
 
 监视**源文件夹**（非归档目录），有新文件时防抖后自动整理：
 
 ```bash
+# 按配置监视 desktop + downloads + auto_monitor_folders（无参数默认）
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py monitor --mode preview
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py monitor --all --mode run
+
 python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py monitor --desktop --mode preview
-python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py monitor --desktop --mode run
-python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py monitor-status --desktop
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py monitor --downloads --mode run
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py monitor --folder /path/to/inbox --mode preview
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py monitor-status
 ```
 
 | 模式 | 行为 | 计费 |
@@ -79,7 +85,7 @@ python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py monitor-status --desktop
 | `preview` | 输出整理方案，不移动 | 免费 |
 | `run` | 自动归档到 `archive_root` | 每次触发 = 1 次整理会话 |
 
-配置：`auto_monitor_mode`、`auto_monitor_debounce_secs`（默认 10）、`auto_monitor_folder`。
+配置：`auto_monitor_mode`、`auto_monitor_debounce_secs`（默认 10）、`auto_monitor_targets`（默认 `["desktop","downloads"]`）、`auto_monitor_folders`、`auto_monitor_ignore_existing`（默认忽略启动前已有文件）。
 
 ### Agent 执行 SOP（查找文件）
 
@@ -317,5 +323,5 @@ python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py watch-status
 
 ## 版本
 
-- Skill：1.7.0（402 展示 products + monitor 自动监视桌面）
+- Skill：1.8.0（macOS / Windows 桌面图形应用）
 - 分类规则：`references/classification-rules.md`

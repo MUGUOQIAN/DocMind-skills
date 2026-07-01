@@ -11,6 +11,28 @@ import sys
 from pathlib import Path
 
 
+def _monitor_selection(args) -> dict:
+    """根据 CLI 参数解析 monitor / monitor-status 的目录选择。"""
+    folders = getattr(args, "folders", None) or None
+    use_desktop = bool(getattr(args, "desktop", False))
+    use_downloads = bool(getattr(args, "downloads", False))
+    use_all = bool(getattr(args, "all", False))
+    source_dir = folders[0] if folders and len(folders) == 1 and not (
+        use_desktop or use_downloads or use_all
+    ) else None
+    if folders and len(folders) > 1:
+        source_dir = None
+    if not (use_desktop or use_downloads or use_all or folders or source_dir):
+        use_all = True
+    return {
+        "use_desktop": use_desktop,
+        "use_downloads": use_downloads,
+        "use_all": use_all,
+        "folders": folders if folders and not source_dir else None,
+        "source_dir": source_dir,
+    }
+
+
 def find_client_root() -> Path:
     """定位 DocMind-skills 仓库根目录（含 lib/organizer.py）。"""
     env = os.getenv("DOCMIND_REPO_ROOT", "").strip()
@@ -89,8 +111,20 @@ def main() -> int:
     sub.add_parser("watch-status", help="查看归档目录索引监视状态")
 
     p_monitor = sub.add_parser("monitor", help="监视待整理目录，有新文件时自动整理")
-    p_monitor.add_argument("--desktop", action="store_true")
-    p_monitor.add_argument("--folder", help="待整理目录（默认配置 target_folder 或桌面）")
+    p_monitor.add_argument("--desktop", action="store_true", help="监视桌面")
+    p_monitor.add_argument("--downloads", action="store_true", help="监视下载文件夹")
+    p_monitor.add_argument(
+        "--all",
+        action="store_true",
+        help="监视配置中的 desktop+downloads+auto_monitor_folders（无参数时默认）",
+    )
+    p_monitor.add_argument(
+        "--folder",
+        action="append",
+        dest="folders",
+        metavar="PATH",
+        help="指定待整理目录，可多次使用",
+    )
     p_monitor.add_argument(
         "--mode",
         choices=("preview", "run"),
@@ -103,8 +137,13 @@ def main() -> int:
         help="防抖秒数（默认 10 或配置 auto_monitor_debounce_secs）",
     )
 
-    sub.add_parser("monitor-status", help="查看待整理目录自动监视状态")
+    p_ms = sub.add_parser("monitor-status", help="查看待整理目录自动监视状态")
+    p_ms.add_argument("--desktop", action="store_true")
+    p_ms.add_argument("--downloads", action="store_true")
+    p_ms.add_argument("--all", action="store_true")
+    p_ms.add_argument("--folder", action="append", dest="folders", metavar="PATH")
     sub.add_parser("products", help="查询可购 SKU（402 时展示）")
+    sub.add_parser("gui", help="启动桌面图形应用（macOS / Windows）")
 
     args = parser.parse_args()
     if args.repo:
@@ -142,6 +181,9 @@ def main() -> int:
         print(json.dumps({"products": fetch_products()}, ensure_ascii=False, indent=2))
         return 0
 
+    if args.cmd == "gui":
+        return _run(repo, [py, str(repo / "desktop" / "main.py")])
+
     if args.cmd in ("search", "rebuild-index", "watch", "watch-status", "monitor", "monitor-status"):
         sys.path.insert(0, str(repo))
         from lib.config import load_config  # noqa: E402
@@ -155,39 +197,31 @@ def main() -> int:
         archive = getattr(args, "archive", None) or cfg.get("archive_root") or None
 
         if args.cmd == "monitor-status":
-            from lib.inbox_watcher import read_monitor_state, resolve_monitor_source  # noqa: E402
+            from lib.inbox_watcher import collect_monitor_status, resolve_monitor_targets  # noqa: E402
 
-            source = resolve_monitor_source(
-                source_dir=getattr(args, "folder", None),
-                use_desktop=getattr(args, "desktop", False),
-                config=cfg,
-            )
-            state = read_monitor_state(source)
-            print(
-                json.dumps(
-                    {
-                        "source_root": str(source),
-                        "monitoring": state is not None,
-                        "state": state,
-                    },
-                    ensure_ascii=False,
-                    indent=2,
-                )
-            )
+            sel = _monitor_selection(args)
+            if sel["use_all"] and not (
+                sel["use_desktop"] or sel["use_downloads"] or sel["folders"] or sel["source_dir"]
+            ):
+                status = collect_monitor_status(use_all=True, config=cfg)
+            else:
+                targets = resolve_monitor_targets(**sel, config=cfg)
+                status = collect_monitor_status(targets=targets, config=cfg)
+            print(json.dumps(status, ensure_ascii=False, indent=2))
             return 0
 
         if args.cmd == "monitor":
             from lib.inbox_watcher import run_monitor  # noqa: E402
 
+            sel = _monitor_selection(args)
             try:
                 return run_monitor(
                     platform_user_id=uid,
                     platform=platform,
-                    source_dir=getattr(args, "folder", None),
-                    use_desktop=getattr(args, "desktop", False),
                     mode=getattr(args, "mode", None),
                     debounce_sec=getattr(args, "debounce", None),
                     config=cfg,
+                    **sel,
                 )
             except ImportError:
                 print(

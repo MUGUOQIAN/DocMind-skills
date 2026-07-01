@@ -8,6 +8,12 @@ from pathlib import Path
 from typing import Any
 
 from .config import DEFAULT_CONFIG_PATH, default_config, desktop_path, load_config
+from .archive_location import (
+    join_archive_path,
+    list_storage_roots,
+    suggest_archive_paths,
+    validate_archive_root,
+)
 from .habit_discovery import discover_and_merge, format_discovery_summary
 from .presets import (
     apply_industry_preset,
@@ -86,6 +92,45 @@ def _config_from_env() -> dict[str, Any] | None:
     return cfg
 
 
+def _prompt_archive_root(default: str = "", target_folder: str = "") -> str:
+    print()
+    print("整理后文件保存位置（归档根目录）")
+    print("可将文件保存到任意磁盘，建议选择空间充足的盘符。")
+    roots = list_storage_roots()
+    suggestions = suggest_archive_paths(target_folder or default)
+    if not default and suggestions:
+        default = suggestions[0]
+
+    if roots:
+        print()
+        for i, item in enumerate(roots, 1):
+            print(f"  [{i}] {item['display']}")
+        print("  [C] 自定义完整路径")
+        print("  [S] 使用推荐路径列表")
+        choice = _prompt("请选择磁盘编号", "1").strip().upper()
+        if choice == "C":
+            path = _prompt("请输入归档根目录完整路径", default)
+            return str(validate_archive_root(path, create=True))
+        if choice == "S":
+            for j, path in enumerate(suggestions, 1):
+                print(f"  [{j}] {path}")
+            idx = _prompt("请选择推荐路径编号", "1")
+            try:
+                picked = suggestions[max(0, int(idx) - 1)]
+            except (ValueError, IndexError):
+                picked = default
+            return str(validate_archive_root(picked, create=True))
+        try:
+            picked_root = roots[max(0, int(choice) - 1)]["path"]
+        except (ValueError, IndexError):
+            picked_root = roots[0]["path"]
+        folder = _prompt("该磁盘下的文件夹名", "DocMind归档")
+        return str(validate_archive_root(join_archive_path(picked_root, folder), create=True))
+
+    path = _prompt("归档根目录（整理后文件放入此处）", default)
+    return str(validate_archive_root(path or default, create=True))
+
+
 def run_setup_wizard(
     *,
     platform: str = "docmind",
@@ -138,10 +183,12 @@ def run_setup_wizard(
     elif loc == "1":
         cfg["target_folder"] = str(desktop_path())
 
-    default_archive = ""
-    if cfg["target_folder"]:
-        default_archive = str(Path(cfg["target_folder"]).parent / "DocMind归档")
-    cfg["archive_root"] = _prompt("归档根目录（整理后文件放入此处）", default_archive)
+    cfg["archive_root"] = _prompt_archive_root(
+        default=str(Path(cfg["target_folder"]).parent / "DocMind归档")
+        if cfg["target_folder"]
+        else "",
+        target_folder=cfg.get("target_folder", ""),
+    )
 
     print()
     print("习惯学习（可选）：扫描桌面/文档/待整理目录等，提取您已有的文件夹命名习惯，")

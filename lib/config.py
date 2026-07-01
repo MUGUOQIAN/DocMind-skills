@@ -28,6 +28,9 @@ def default_config() -> dict[str, Any]:
         "auto_monitor_mode": "preview",
         "auto_monitor_debounce_secs": 10,
         "auto_monitor_folder": "",
+        "auto_monitor_targets": ["desktop", "downloads"],
+        "auto_monitor_folders": [],
+        "auto_monitor_ignore_existing": True,
         "shortcut_path": "应用快捷方式",
         "max_path_depth": 4,
         "project_path_depth": 3,
@@ -110,3 +113,12 @@ def desktop_path() -> Path:
         if p.is_dir():
             return p
     return home / "Desktop"
+
+
+def downloads_path() -> Path:
+    home = Path.home()
+    for name in ("Downloads", "下载", "下载内容"):
+        p = home / name
+        if p.is_dir():
+            return p
+    return home / "Downloads"

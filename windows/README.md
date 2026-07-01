@@ -53,13 +53,20 @@ D:\我的资料库\
     └── file_index.md
 ```
 
-### 方式一：配置引导（推荐，最简单）
+### 方式一：桌面应用（推荐）
+
+1. 双击 **「DocMind 应用」**
+2. 首次启动会提示 **选择归档保存位置**：按磁盘选择（显示剩余空间）或自定义完整路径
+3. 之后可在「整理」页点击 **更改保存位置** 随时修改
+
+### 方式二：配置引导
 
 1. 进入 `DocMind-skills\windows\`
 2. 双击 **`setup-config.bat`**
-3. 按提示选择或输入：
-   - **待整理位置**：桌面 / 指定文件夹（如下载目录）
-   - **归档根目录**：整理后文件存放位置
+3. 按提示选择：
+   - **待整理位置**：桌面 / 指定文件夹
+   - **磁盘编号**：列出 C:、D: 等及各盘剩余空间
+   - **文件夹名**：如 `DocMind归档` → 最终为 `D:\DocMind归档`
 
 示例输入：
 
@@ -71,7 +78,7 @@ D:\我的资料库\
 
 改完后先运行 **「预览整理桌面」** 确认路径正确，再执行整理。
 
-### 方式二：直接编辑配置文件
+### 方式三：直接编辑配置文件
 
 1. 用记事本打开：
 
@@ -95,7 +102,7 @@ D:\我的资料库\
 
 3. 保存文件，再运行预览或整理。
 
-### 方式三：仅整理「下载」等其他文件夹
+### 方式四：仅整理「下载」等其他文件夹
 
 若不想整理桌面，只整理下载目录：
 
@@ -119,19 +126,36 @@ D:\我的资料库\
 3. **搜索索引按归档目录记录**；换目录后搜索新文件无影响；若要搜旧归档，需记得旧路径，或对旧目录执行 `rebuild-index`。  
 4. 归档目录所在磁盘需有**足够空间**和**写入权限**（勿选只读或系统保护目录）。
 
-## 自动监视桌面
+## 自动监视（桌面 / 下载 / 指定目录）
 
-桌面或 `target_folder` 出现新文件时，防抖后自动整理：
+待整理目录出现新文件时，防抖后自动整理。默认监视 **桌面 + 下载文件夹**（可在 `~/.docmind/config.json` 配置 `auto_monitor_targets`、`auto_monitor_folders`）。
 
 | 快捷方式 | 模式 | 说明 |
 |----------|------|------|
 | **监视桌面(预览)** | `preview` | 只输出方案，不移动文件 |
-| **监视桌面(自动整理)** | `run` | 自动归档；**每次触发扣 1 次整理会话** |
+| **监视桌面(自动整理)** | `run` | 自动归档；每次触发扣 1 次整理会话 |
+| **监视下载(预览/自动整理)** | 同上 | 仅监视下载文件夹 |
+| **监视桌面+下载(预览/自动整理)** | 同上 | 同时监视桌面与下载 |
 
 ```bash
-python scripts/docmind.py monitor --desktop --mode preview
-python scripts/docmind.py monitor-status --desktop
+python scripts/docmind.py monitor --mode preview          # 按配置监视
+python scripts/docmind.py monitor --all --mode run
+python scripts/docmind.py monitor --folder D:\Inbox --mode preview
+python scripts/docmind.py monitor-status
 ```
+
+启动时默认**忽略目录内已有文件**，仅对新出现的文件触发（`auto_monitor_ignore_existing: true`）。
+
+## 桌面应用
+
+安装后双击 **DocMind 应用**，或运行：
+
+```bash
+python desktop/main.py
+python scripts/docmind.py gui
+```
+
+图形界面支持：预览/执行/撤销整理、归档搜索、设置归档目录。详见 `desktop/README.md`。
 
 ## 常见问题
 

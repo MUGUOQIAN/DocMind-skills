@@ -51,6 +51,7 @@ $pip = Join-Path $VenvPath "Scripts\pip.exe"
 $python = Join-Path $VenvPath "Scripts\python.exe"
 & $pip install -q --upgrade pip
 & $pip install -q -r (Join-Path $RepoRoot "requirements.txt")
+& $pip install -q -r (Join-Path $RepoRoot "desktop\requirements.txt")
 
 Write-Step "写入默认配置（桌面 -> DocMind归档）"
 $bootstrap = & $python (Join-Path $RepoRoot "scripts\bootstrap_windows.py")
@@ -91,13 +92,18 @@ New-Shortcut "DocMind - 撤销上次整理" (Join-Path $WindowsDir "undo-desktop
 New-Shortcut "DocMind - 查询剩余额度" (Join-Path $WindowsDir "quota.bat")
 New-Shortcut "DocMind - 监视桌面(预览)" (Join-Path $WindowsDir "monitor-desktop-preview.bat")
 New-Shortcut "DocMind - 监视桌面(自动整理)" (Join-Path $WindowsDir "monitor-desktop-run.bat")
+New-Shortcut "DocMind - 监视下载(预览)" (Join-Path $WindowsDir "monitor-downloads-preview.bat")
+New-Shortcut "DocMind - 监视下载(自动整理)" (Join-Path $WindowsDir "monitor-downloads-run.bat")
+New-Shortcut "DocMind - 监视桌面+下载(预览)" (Join-Path $WindowsDir "monitor-all-preview.bat")
+New-Shortcut "DocMind - 监视桌面+下载(自动整理)" (Join-Path $WindowsDir "monitor-all-run.bat")
+New-Shortcut "DocMind 应用" (Join-Path $WindowsDir "docmind-app.bat")
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "  安装完成！" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "桌面上已创建 6 个快捷方式。建议使用步骤：" -ForegroundColor Yellow
+Write-Host "桌面上已创建 11 个快捷方式。建议使用步骤：" -ForegroundColor Yellow
 Write-Host "  1. 双击「DocMind - 预览整理桌面」查看方案"
 Write-Host "  2. 确认后双击「DocMind - 执行整理桌面」"
 Write-Host ""

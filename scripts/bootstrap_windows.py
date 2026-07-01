@@ -12,6 +12,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_ROOT))
 
 from lib.config import default_config, desktop_path  # noqa: E402
+from lib.archive_location import suggest_archive_paths  # noqa: E402
 from lib.setup_wizard import save_config  # noqa: E402
 
 
@@ -26,7 +27,12 @@ def main() -> int:
     cfg = default_config()
     desktop = desktop_path()
     cfg["target_folder"] = str(desktop)
-    cfg["archive_root"] = str(desktop.parent / "DocMind归档")
+    env_archive = os.getenv("DOCMIND_ARCHIVE_ROOT", "").strip()
+    if env_archive:
+        cfg["archive_root"] = env_archive
+    else:
+        suggestions = suggest_archive_paths(str(desktop))
+        cfg["archive_root"] = suggestions[0] if suggestions else str(desktop.parent / "DocMind归档")
     cfg["dry_run"] = True
     path = save_config(cfg)
     payload = {
