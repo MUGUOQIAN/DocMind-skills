@@ -1,7 +1,7 @@
 ---
 name: docmind
 description: "智能文件整理：按内容归类到生活/工作目录，在已归档文件中快速检索。Organize local files by content into 生活/工作 archive folders and search via file index. 触发：整理桌面、文件太乱了、找合同、搜归档、清理下载目录。"
-version: 1.6.2
+version: 1.7.0
 license: MIT
 homepage: https://github.com/MUGUOQIAN/DocMind-skills
 user-invocable: true
@@ -40,6 +40,7 @@ metadata:
 | `undo` | 从索引移除对应条目 |
 | `rebuild-index` | 扫描归档目录重建（修复缺失索引或补全摘要） |
 | `watch` | 监视 `archive_root` 变动，增量更新索引（本地，不耗整理额度） |
+| `monitor` | 监视**待整理目录**（桌面等），有新文件时自动 preview/run |
 
 索引文件位置：
 
@@ -62,6 +63,23 @@ python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py watch-status
 - 前台运行直至 Ctrl+C；状态写入 `<archive_root>/.docmind/watch_state.json`
 - **不消耗**整理会话额度；本地提取摘要更新索引
 - 长驻场景：WorkBuddy 下用 `Start-Process`（Windows）或 `nohup … &`（macOS/Linux）后台运行；见 `platforms/workbuddy/SKILL.md`
+
+### 自动监视待整理目录（桌面等）
+
+监视**源文件夹**（非归档目录），有新文件时防抖后自动整理：
+
+```bash
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py monitor --desktop --mode preview
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py monitor --desktop --mode run
+python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py monitor-status --desktop
+```
+
+| 模式 | 行为 | 计费 |
+|------|------|------|
+| `preview` | 输出整理方案，不移动 | 免费 |
+| `run` | 自动归档到 `archive_root` | 每次触发 = 1 次整理会话 |
+
+配置：`auto_monitor_mode`、`auto_monitor_debounce_secs`（默认 10）、`auto_monitor_folder`。
 
 ### Agent 执行 SOP（查找文件）
 
@@ -116,7 +134,7 @@ python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py rebuild-index --archive "C:/Use
 ```
 
    重建后再次 `search`。
-8. **HTTP 402 / `payment_required`**：试用期内本月免费次数用尽，或 3 个月试用期已结束 → 提示订阅（9.9 元/月）或按次购买；可用 `quota` 查看 `free_trial_active` 与剩余天数。
+8. **HTTP 402 / `payment_required`**：响应 JSON 含 `message` 与 **`products`** 可购 SKU 列表。Agent 应向用户展示 `products`（名称与 `price_yuan`），并建议 `python …/docmind.py products` 或运营充值。可用 `quota` 查看 `free_trial_active`。
 9. **仍无结果**：说明该文件可能从未被 DocMind 整理进该归档；建议对源目录（桌面/下载）执行 `preview` 再 `run`，或请用户提供更多线索（大致日期、文件类型）。
 
 ### 检索对话示例
@@ -295,9 +313,9 @@ python ${CODEBUDDY_SKILL_DIR}/scripts/docmind.py watch-status
 - 试用期结束后不再赠送月度免费额度，需订阅或按次付费
 - 一次 `run` = 1 次整理会话（会话内最多约 500 个文件）
 - 用 `quota --user-id <ID>` 查询 `free_trial_active`、`free_trial_days_remaining` 及剩余次数
-- HTTP 402 时提示充值或订阅；Skill 本身无定价元数据
+- HTTP 402 时输出含 `products` 的 JSON，提示用户选购或联系运营充值
 
 ## 版本
 
-- Skill：1.6.2（新用户 3 个月免费试用）
+- Skill：1.7.0（402 展示 products + monitor 自动监视桌面）
 - 分类规则：`references/classification-rules.md`

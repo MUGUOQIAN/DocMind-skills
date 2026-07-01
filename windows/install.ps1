@@ -89,13 +89,15 @@ New-Shortcut "DocMind - 预览整理桌面" (Join-Path $WindowsDir "preview-desk
 New-Shortcut "DocMind - 执行整理桌面" (Join-Path $WindowsDir "run-desktop.bat")
 New-Shortcut "DocMind - 撤销上次整理" (Join-Path $WindowsDir "undo-desktop.bat")
 New-Shortcut "DocMind - 查询剩余额度" (Join-Path $WindowsDir "quota.bat")
+New-Shortcut "DocMind - 监视桌面(预览)" (Join-Path $WindowsDir "monitor-desktop-preview.bat")
+New-Shortcut "DocMind - 监视桌面(自动整理)" (Join-Path $WindowsDir "monitor-desktop-run.bat")
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "  安装完成！" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "桌面上已创建 4 个快捷方式。建议使用步骤：" -ForegroundColor Yellow
+Write-Host "桌面上已创建 6 个快捷方式。建议使用步骤：" -ForegroundColor Yellow
 Write-Host "  1. 双击「DocMind - 预览整理桌面」查看方案"
 Write-Host "  2. 确认后双击「DocMind - 执行整理桌面」"
 Write-Host ""

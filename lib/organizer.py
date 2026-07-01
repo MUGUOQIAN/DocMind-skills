@@ -18,6 +18,7 @@ from .file_index import (
     update_index_from_operations,
 )
 from .classification_rules import normalize_archive_path
+from .payment_hint import PaymentRequiredError, payment_required_payload
 from .setup_wizard import save_config
 from .shortcuts import is_shortcut, shortcut_target_path
 
@@ -246,10 +247,9 @@ def organize(
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code == 402:
                 detail = exc.response.json().get("detail", {})
-                raise RuntimeError(detail.get("message", "需要付费")) from exc
+                msg = detail.get("message", "需要付费")
+                raise PaymentRequiredError(msg, payload=payment_required_payload(msg)) from exc
             raise
-
-    operations: list[dict] = []
     for file_path in file_list:
         preview_text = ""
         if is_shortcut(file_path):
@@ -273,7 +273,10 @@ def organize(
             except httpx.HTTPStatusError as exc:
                 if exc.response.status_code == 402:
                     detail = exc.response.json().get("detail", {})
-                    raise RuntimeError(detail.get("message", "需要付费")) from exc
+                    msg = detail.get("message", "需要付费")
+                    raise PaymentRequiredError(
+                        msg, payload=payment_required_payload(msg)
+                    ) from exc
                 raise
             suggested = normalize_archive_path(result["target_path"].replace("\\", "/"))
             rel = suggested

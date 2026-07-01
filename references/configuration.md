@@ -63,7 +63,8 @@ export DOCMIND_SKIP_SETUP=1
 
 ## 计费说明
 
-- **preview** / **rebuild-index** / **watch**：始终免费
+- **preview** / **rebuild-index** / **watch** / **monitor --mode preview**：始终免费
+- **monitor --mode run**：每次防抖触发 = 1 次整理会话
 - **run**：每轮整理 = **1 次整理会话**；单次会话默认最多 500 个文件
 - **search**：每次索引查找 = **1 次查找额度**
 - **免费试用**：新用户自首次调用起 **3 个月内**，每月 **5 次整理** + **20 次查找**（自然月重置）
@@ -71,5 +72,13 @@ export DOCMIND_SKIP_SETUP=1
 - 订阅：**9.9 元/月**，整理与查找均无限
 
 `quota` 响应含 `free_trial_active`、`free_trial_expire`、`free_trial_days_remaining`。
+
+### 自动监视（monitor）
+
+| 字段 | 说明 |
+|------|------|
+| `auto_monitor_mode` | `preview`（默认，不移动）或 `run`（自动归档） |
+| `auto_monitor_debounce_secs` | 新文件防抖秒数，默认 10 |
+| `auto_monitor_folder` | 监视目录；留空则用 `target_folder` 或桌面 |
 
 Skill 本身不包含定价元数据；详见项目 README 与 `api.md`。

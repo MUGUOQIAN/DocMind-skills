@@ -14,8 +14,8 @@ def consume_search_quota(
     *,
     platform: str | None = None,
 ) -> dict:
-    platform = platform or platform_name()
     """每次 search 前扣减 1 次查找额度。"""
+    platform = platform or platform_name()
     r = httpx.post(
         f"{BACKEND_URL}/api/v1/search/consume",
         json={"platform_user_id": platform_user_id, "platform": platform},

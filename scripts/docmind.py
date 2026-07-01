@@ -88,6 +88,24 @@ def main() -> int:
 
     sub.add_parser("watch-status", help="查看归档目录索引监视状态")
 
+    p_monitor = sub.add_parser("monitor", help="监视待整理目录，有新文件时自动整理")
+    p_monitor.add_argument("--desktop", action="store_true")
+    p_monitor.add_argument("--folder", help="待整理目录（默认配置 target_folder 或桌面）")
+    p_monitor.add_argument(
+        "--mode",
+        choices=("preview", "run"),
+        help="preview 不移动；run 自动归档（每次触发扣 1 次整理会话）",
+    )
+    p_monitor.add_argument(
+        "--debounce",
+        type=float,
+        default=None,
+        help="防抖秒数（默认 10 或配置 auto_monitor_debounce_secs）",
+    )
+
+    sub.add_parser("monitor-status", help="查看待整理目录自动监视状态")
+    sub.add_parser("products", help="查询可购 SKU（402 时展示）")
+
     args = parser.parse_args()
     if args.repo:
         os.environ["DOCMIND_REPO_ROOT"] = args.repo
@@ -118,7 +136,13 @@ def main() -> int:
         print(json.dumps(r.json(), ensure_ascii=False, indent=2))
         return 0
 
-    if args.cmd in ("search", "rebuild-index", "watch", "watch-status"):
+    if args.cmd == "products":
+        from lib.payment_hint import fetch_products  # noqa: E402
+
+        print(json.dumps({"products": fetch_products()}, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.cmd in ("search", "rebuild-index", "watch", "watch-status", "monitor", "monitor-status"):
         sys.path.insert(0, str(repo))
         from lib.config import load_config  # noqa: E402
         from lib.file_index import (  # noqa: E402
@@ -129,6 +153,48 @@ def main() -> int:
 
         cfg = load_config()
         archive = getattr(args, "archive", None) or cfg.get("archive_root") or None
+
+        if args.cmd == "monitor-status":
+            from lib.inbox_watcher import read_monitor_state, resolve_monitor_source  # noqa: E402
+
+            source = resolve_monitor_source(
+                source_dir=getattr(args, "folder", None),
+                use_desktop=getattr(args, "desktop", False),
+                config=cfg,
+            )
+            state = read_monitor_state(source)
+            print(
+                json.dumps(
+                    {
+                        "source_root": str(source),
+                        "monitoring": state is not None,
+                        "state": state,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            return 0
+
+        if args.cmd == "monitor":
+            from lib.inbox_watcher import run_monitor  # noqa: E402
+
+            try:
+                return run_monitor(
+                    platform_user_id=uid,
+                    platform=platform,
+                    source_dir=getattr(args, "folder", None),
+                    use_desktop=getattr(args, "desktop", False),
+                    mode=getattr(args, "mode", None),
+                    debounce_sec=getattr(args, "debounce", None),
+                    config=cfg,
+                )
+            except ImportError:
+                print(
+                    "缺少 watchdog 依赖，请执行: pip install watchdog",
+                    file=sys.stderr,
+                )
+                return 1
 
         if args.cmd == "watch-status":
             from lib.index_watcher import read_watch_state  # noqa: E402
@@ -175,19 +241,17 @@ def main() -> int:
 
             from lib.billing_client import consume_search_quota  # noqa: E402
 
+            from lib.payment_hint import payment_required_payload  # noqa: E402
+
             try:
                 billing = consume_search_quota(uid, platform=platform)
             except httpx.HTTPStatusError as exc:
                 if exc.response.status_code == 402:
                     detail = exc.response.json().get("detail", {})
+                    msg = detail.get("message", "查找额度不足，请充值或订阅。")
                     print(
                         json.dumps(
-                            {
-                                "error": "payment_required",
-                                "message": detail.get(
-                                    "message", "查找额度不足，请充值或订阅。"
-                                ),
-                            },
+                            payment_required_payload(msg),
                             ensure_ascii=False,
                             indent=2,
                         )

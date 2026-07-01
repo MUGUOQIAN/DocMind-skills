@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from lib.config import load_config  # noqa: E402
 from lib.organizer import confirm_archive_structure, organize, undo_last  # noqa: E402
+from lib.payment_hint import PaymentRequiredError  # noqa: E402
 from lib.setup_wizard import ensure_config, run_setup_wizard  # noqa: E402
 
 PLATFORM = "workbuddy"
@@ -88,16 +89,20 @@ def main() -> None:
     elif args.run:
         dry_run = False
 
-    ops = organize(
-        platform_user_id=args.user_id,
-        platform=PLATFORM,
-        source_dir=args.source,
-        archive_root=args.target,
-        use_desktop=args.desktop,
-        config=cfg,
-        dry_run=dry_run,
-    )
-    print(json.dumps(ops, ensure_ascii=False, indent=2))
+    try:
+        ops = organize(
+            platform_user_id=args.user_id,
+            platform=PLATFORM,
+            source_dir=args.source,
+            archive_root=args.target,
+            use_desktop=args.desktop,
+            config=cfg,
+            dry_run=dry_run,
+        )
+        print(json.dumps(ops, ensure_ascii=False, indent=2))
+    except PaymentRequiredError as exc:
+        print(json.dumps(exc.payload, ensure_ascii=False, indent=2))
+        raise SystemExit(1) from exc
 
 
 if __name__ == "__main__":
